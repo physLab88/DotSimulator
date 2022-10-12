@@ -11,6 +11,8 @@ import set
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import constants as cst
+import warnings
+import scipy.linalg as linalg
 
 
 # build simulation (levels, caps) returns simulation set
@@ -115,6 +117,7 @@ def main():
     # set1 = build_simulation2(0.86, 0.87, 3.52, 10, -10)
     Vg = np.linspace(-50, 350, 100)
     Vd = np.linspace(-70, 70, 100)
+    warnings.filterwarnings(action='ignore', category=linalg.LinAlgWarning)  # manually supressing linalg warnings
     I1 = simulate_current(set1, Vg, Vd, 40)
     # plt.sca(axs[0])
     plt_current(Vg, Vd, I1, 'Simulated stability diagrams')
