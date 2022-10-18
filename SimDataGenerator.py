@@ -11,18 +11,18 @@ import copy
 
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/sim_data/"
+FILEPATH = "Data/sim_data_G/"
 
 dopants = []
 dopants.append({
     'type': 'P',
-    'levels': [-45.59, -32.58, -33.89],  # mV
+    'levels': np.array([-45.59, -32.58, -33.89]) + 45.59,  # mV
     'degen': [1, 2, 3],
     'capGenerator': lambda: None,  # here, put cap generation function as lambda
     })
 dopants.append({
     'type': 'As',
-    'levels': [-53.76, -31.26, -32.67],  # mV
+    'levels': np.array([-53.76, -31.26, -32.67]) + 53.79,  # mV
     'degen': [1, 2, 3],
     'capGenerator': lambda: None,  # here, put cap generation function as lambda
     })
@@ -47,7 +47,7 @@ def pltBeta(a, b, loc=0.0, scale=1.0):
     plt.show()
 
 
-def plt_current(Vg, Vd, I, title='no name'):
+def plt_current(I, Vg, Vd, title='no name', multi_plt=False):
     """
     Vg: array of Gate voltages, I use the first element as the min Vg value
         and the last as the max value. every other values are unused
@@ -56,29 +56,50 @@ def plt_current(Vg, Vd, I, title='no name'):
     I: Vds current matrix (in ????????????????????)
     title: graph title"""
     plt.title(title)
-    plt.imshow(I, extent=[Vg[0],Vg[-1],Vd[0],Vd[-1]], aspect='auto')
-    cbar = plt.colorbar(label='current in ??????')
-    plt.xlabel(r'$V_g$ in mV')
-    plt.ylabel(r'$V_{ds}$ in mV')
+    plt.imshow(np.abs(I), extent=[Vg[0],Vg[-1],Vd[0],Vd[-1]], aspect='auto', cmap='hot')
+    if not multi_plt:
+        cbar = plt.colorbar(label='current in ??????')
+        plt.xlabel(r'$V_g$ in mV')
+        plt.ylabel(r'$V_{ds}$ in mV')
     plt.axhline(0, color='k', alpha=0.3)
     # plt.axvline(0, color='k', alpha=0.3)
 
 
-def plt_file(fileIndex):
+def plt_conduct(G, Vg, Vd, title='no name', multi_plt=False):
+    """
+    Vg: array of Gate voltages, I use the first element as the min Vg value
+        and the last as the max value. every other values are unused
+    Vd: array of drain voltages, I use the first element as the min Vd value
+        and the last as the max value. every other values are unused
+    G: Gds conductance matrix (in ????????????????????)
+    title: graph title"""
+    plt.imshow(G, extent=[Vg[0],Vg[-1],Vd[0],Vd[-1]], aspect='auto', cmap='RdPu')
+    if not multi_plt:
+        cbar = plt.colorbar(label='conductance in ??????')
+        plt.xlabel(r'$V_g$ in mV')
+        plt.ylabel(r'$V_{ds}$ in mV')
+    plt.axhline(0, color='k', alpha=0.3)
+    plt.title(title)
+    # plt.axvline(0, color='k', alpha=0.3)
+
+
+def plt_file(fileIndex, multi_plt=False):
     f = open(FILEPATH + '_data_indexer.yaml', 'r')
     info = yaml.load(f, Loader=yaml.FullLoader)[fileIndex]
     data = np.load(FILEPATH + info['f'] + ".npy")
     Vg = info['Vg_range']
     Vds = info['Vds_range']
+    mesure = info['mesure']
 
-    plt.title("type:" + info['type'] + "  T:" + '{:.2f}'.format(info['T']) + "K  Index:" + str(fileIndex) +
+    title = ("type:" + info['type'] + "  T:" + '{:.2f}'.format(info['T']) + "K  Index:" + str(fileIndex) +
               "  Cg:" + '{:.2f}'.format(info['Cg']) + "aF  Cs:" + '{:.2f}'.format(info['Cs']) +
               "aF  Cd:" + '{:.2f}'.format(info['Cd']) + "aF")
-    plt.imshow(np.abs(data), extent=[Vg[0], Vg[-1], Vds[0], Vds[-1]], aspect='auto')
-    cbar = plt.colorbar(label='current in ??????')
-    plt.xlabel(r'$V_g$ in mV')
-    plt.ylabel(r'$V_{ds}$ in mV')
-    plt.show()
+    if mesure == 'I':
+        plt_current(data, Vg, Vds, title, multi_plt=multi_plt)
+    elif mesure == 'G':
+        plt_conduct(data, Vg, Vds, title, multi_plt=multi_plt)
+    if not multi_plt:
+        plt.show()
     return
 
 
@@ -105,13 +126,14 @@ def build_simulation(Cd, Cs, Cg, levels, degens, Gd=1.0, Gs=1.0):
     return new_set
 
 
-def simulate_current(myset, Vg, Vd, T):
+def simulate(myset, Vg, Vd, T, mesure='I'):
     """
     myset: a set we want to simulate
     Vg: an array of gate voltages (in mV)
     Vd: an array of drain voltages (in mV)
         NOTE: here, we assume Vsource = 0V
     T: temperature in K
+    mesure: the quantity to mesure ('I' for current and 'G' for conductance)
 
     returns a 2D matrix of currents (first indices iterates
         over Vd and second indicies iterates over Vg)
@@ -121,16 +143,19 @@ def simulate_current(myset, Vg, Vd, T):
     myset.pre_processing()
 
     # running the simulation
-    I = []
+    data = []
     for vd in Vd:
         temp = []
         for vg in Vg:
             myset.tunnel_rate([0, vd, vg])
             myset.solver()
             temp.append(myset.current('drain', 'dot'))
-        I.append(temp)
-    I = np.array(I)
-    return I
+        data.append(temp)
+    data = np.array(data)
+    if mesure == 'G':
+        # TODO calculate conductance here
+        data = np.gradient(data, (Vd[1] - Vd[0])*1E-3, axis=0)
+    return data
 
 
 def randCapGenerator(C_dist, g_ratio, snd_ratio):
@@ -148,7 +173,7 @@ def randCapGenerator(C_dist, g_ratio, snd_ratio):
     return Cd, Cs, Cg
 
 
-def generation_loop(n, dop_dist, T_dist, Vg_range, nVg, Vds_range, nVds):
+def generation_loop(n, dop_dist, T_dist, Vg_range, nVg, Vds_range, nVds, mesure='I'):
     global dopants
     try:
         f = open(FILEPATH + '_data_indexer.yaml', 'r')
@@ -172,7 +197,7 @@ def generation_loop(n, dop_dist, T_dist, Vg_range, nVg, Vds_range, nVds):
         set1 = build_simulation(Cd, Cs, Cg, dop['levels'], dop['degen'])
         Vg = np.linspace(Vg_range[0], Vg_range[1], nVg)
         Vd = np.linspace(Vds_range[0], Vds_range[1], nVds)
-        I = simulate_current(set1, Vg, Vd, T)
+        diagram = simulate(set1, Vg, Vd, T, mesure=mesure)
 
         # saving data
         print("saving...")
@@ -187,21 +212,21 @@ def generation_loop(n, dop_dist, T_dist, Vg_range, nVg, Vds_range, nVds):
                 'Vg_range': Vg_range,
                 'nVds': nVds,
                 'nVg': nVg,
-                'mesure': 'I',
+                'mesure': mesure,
                 }
         data.append(temp)
         f = open(FILEPATH + '_data_indexer.yaml', 'w')
-        np.save(FILEPATH + ID + '.npy', I)
+        np.save(FILEPATH + ID + '.npy', diagram)
         yaml.dump(data, f)
     return
 
 
-def generateFunction(n):
+def generateFunction(n, mesure='I'):
     global dopants
 
     g_ratio = lambda: beta.rvs(1.2, 1.2, loc=0.40, scale=0.40)
     snd_ratio = lambda: beta.rvs(2, 2, loc=0.15, scale=0.7)
-    C_dist = lambda: beta.rvs(1.3, 1.3, loc=3.5, scale=6)
+    C_dist = lambda: beta.rvs(2.2, 2.2, loc=3.5, scale=6)
     # ----------->>> P impurity
     dopants[0]['capGenerator'] = lambda: randCapGenerator(C_dist=C_dist,
                                                           g_ratio=g_ratio,
@@ -217,14 +242,14 @@ def generateFunction(n):
 
     dop_dist = lambda: np.random.randint(0, 2)
     T_dist = lambda: beta.rvs(4, 4, loc=0, scale=6)
-    generation_loop(n, dop_dist, T_dist, [-150, 200], 100, [-70, 70], 100)
+    generation_loop(n, dop_dist, T_dist, [-10, 290], 100, [-70, 70], 100, mesure=mesure)
 
 
 # =========================== MAIN ===========================
 def main():
-    # pltBeta(4, 4, loc=0, scale=6)
-    num = 50
-    generateFunction(num)
+    #pltBeta(2.2, 2.2, loc=3.5, scale=6)
+    num = 1
+    generateFunction(num, mesure='G')
     for i in range(num):
         plt_file(-(i+1))
 

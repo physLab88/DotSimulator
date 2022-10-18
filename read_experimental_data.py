@@ -21,9 +21,9 @@ def to_grid(I, Vg, Vd):
 
 def plot_exp_data(filepath, title=None):
     data = np.loadtxt(filepath)
-    Vg = data[:,0]
-    Vd = data[:,1]
-    I = data[:,2]
+    Vg = data[:, 0]
+    Vd = data[:, 1]
+    I = data[:, 2]
     if title is None:
         title = filepath
     plt.title(title)
