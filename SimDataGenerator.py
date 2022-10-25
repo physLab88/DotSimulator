@@ -11,7 +11,7 @@ import copy
 
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/sim_data_G/"
+FILEPATH = "Data/sim_val_data/"
 
 dopants = []
 dopants.append({
@@ -153,7 +153,6 @@ def simulate(myset, Vg, Vd, T, mesure='I'):
         data.append(temp)
     data = np.array(data)
     if mesure == 'G':
-        # TODO calculate conductance here
         data = np.gradient(data, (Vd[1] - Vd[0])*1E-3, axis=0)
     return data
 
@@ -248,10 +247,10 @@ def generateFunction(n, mesure='I'):
 # =========================== MAIN ===========================
 def main():
     #pltBeta(2.2, 2.2, loc=3.5, scale=6)
-    num = 1
-    generateFunction(num, mesure='G')
-    for i in range(num):
-        plt_file(-(i+1))
+    num = 200
+    generateFunction(num, mesure='I')
+    # for i in range(num):
+    #     plt_file(-(i+1))
 
 
 if __name__ == '__main__':

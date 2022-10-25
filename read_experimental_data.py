@@ -19,7 +19,7 @@ def to_grid(I, Vg, Vd):
     return I, Vg, Vd
 
 
-def plot_exp_data(filepath, title=None):
+def plot_exp_data(filepath, title=None, mesure='I', log=True):
     data = np.loadtxt(filepath)
     Vg = data[:, 0]
     Vd = data[:, 1]
@@ -30,23 +30,56 @@ def plot_exp_data(filepath, title=None):
 
     I, Vg, Vd = to_grid(I, Vg, Vd)  # re-arange the data so it is easier to work with
     print(I.shape)
+    if mesure == 'I':
+        plt.title(title)
+        if log:
+            plt.imshow(np.log10(np.abs(I)), extent=[Vg[0], Vg[-1], Vd[0], Vd[-1]], aspect='auto', cmap='hot')
+            cbar = plt.colorbar(label='log(|current|)')
+        else:
+            plt.imshow(np.abs(I), extent=[Vg[0], Vg[-1], Vd[0], Vd[-1]], aspect='auto', cmap='hot')
+            cbar = plt.colorbar(label='current in ??????')
+        plt.xlabel(r'$V_g$ in mV')
+        plt.ylabel(r'$V_{ds}$ in mV')
+        plt.axhline(0, color='k', alpha=0.3)
+        #plt.axvline(0, color='k', alpha=0.3)
+    elif mesure == 'G':
+        G = np.gradient(I, (Vd[1] - Vd[0]) * 1E-3, axis=0)
+        plt.title(title)
+        if log:
+            plt.imshow(np.log10(np.abs(G)), extent=[Vg[0], Vg[-1], Vd[0], Vd[-1]], aspect='auto', cmap='RdPu')
+            cbar = plt.colorbar(label='log(|conductance|)')
+        else:
+            plt.imshow(G, extent=[Vg[0], Vg[-1], Vd[0], Vd[-1]], aspect='auto', cmap='RdPu')
+            cbar = plt.colorbar(label='conductance in ??????')
+        plt.xlabel(r'$V_g$ in mV')
+        plt.ylabel(r'$V_{ds}$ in mV')
+        plt.axhline(0, color='k', alpha=0.3)
+        #plt.axvline(0, color='k', alpha=0.3)
 
-    plt.title(title)
-    plt.imshow(I, extent=[Vg[0], Vg[-1], Vd[0], Vd[-1]], aspect='auto')
-    cbar = plt.colorbar(label='current in ??????')
-    plt.xlabel(r'$V_g$ in mV')
-    plt.ylabel(r'$V_{ds}$ in mV')
-    #plt.axhline(0, color='k', alpha=0.3)
-    #plt.axvline(0, color='k', alpha=0.3)
 
-
-def plt_all():
+def plt_I_vs_G(log=True):
     directory = 'Data/exp_data'
     for filename in os.listdir(directory):
         f = os.path.join(directory, filename)
         # checking if it is a file
         if os.path.isfile(f):
-            plot_exp_data(f, 'experimental data')
+            fig, axs = plt.subplots(1, 2, sharex=True, sharey=True, figsize=[12, 5])
+            plt.sca(axs[0])
+            plot_exp_data(f, 'experimental data', 'I', log)
+            plt.sca(axs[1])
+            plot_exp_data(f, 'experimental data', 'G', log)
+            plt.tight_layout()
+            plt.show()
+    return
+
+
+def plt_all(mesure='I', log=True):
+    directory = 'Data/exp_data'
+    for filename in os.listdir(directory):
+        f = os.path.join(directory, filename)
+        # checking if it is a file
+        if os.path.isfile(f):
+            plot_exp_data(f, 'experimental data', mesure, log)
             plt.tight_layout()
             plt.show()
 
@@ -59,7 +92,8 @@ def main():
     # plot_exp_data('Data/exp_data/ST28_Q05_Center_PCF20A_DUT2_4K_diamants__20220622-165225multi.txt', 'test')
     # plt.tight_layout()
     # plt.show()
-    plt_all()
+    plt_I_vs_G(True)
+    #plt_all('G', True)
     return
 
 
