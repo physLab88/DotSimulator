@@ -11,27 +11,7 @@ import copy
 
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/sim_val_data/"
-
-dopants = []
-dopants.append({
-    'type': 'P',
-    'levels': np.array([-45.59, -32.58, -33.89]) + 45.59,  # mV
-    'degen': [1, 2, 3],
-    'capGenerator': lambda: None,  # here, put cap generation function as lambda
-    })
-dopants.append({
-    'type': 'As',
-    'levels': np.array([-53.76, -31.26, -32.67]) + 53.79,  # mV
-    'degen': [1, 2, 3],
-    'capGenerator': lambda: None,  # here, put cap generation function as lambda
-    })
-dopants.append({
-    'type': 'B',
-    'levels': [-15.33, -11.18, -7.36],  # mV
-    'degen': [1, 2, 3],
-    'capGenerator': lambda: None,  # here, put cap generation function as lambda
-    })
+FILEPATH = "Data/single_dot/train/"
 
 
 # ========================== VISUAL TOOLS =========================
@@ -91,9 +71,11 @@ def plt_file(fileIndex, multi_plt=False):
     Vds = info['Vds_range']
     mesure = info['mesure']
 
-    title = ("type:" + info['type'] + "  T:" + '{:.2f}'.format(info['T']) + "K  Index:" + str(fileIndex) +
-              "  Cg:" + '{:.2f}'.format(info['Cg']) + "aF  Cs:" + '{:.2f}'.format(info['Cs']) +
+    title = ("Ec:" + '{:.2f}'.format(info['Ec']) + "meV  T:" + '{:.2f}'.format(info['T']) + r"K    $\alpha$:" +
+             '{:.2f}'.format(info['Cg']/(info['Cg'] + info['Cs'] + info['Cd'])) + "    Cs:" + '{:.2f}'.format(info['Cs']) +
               "aF  Cd:" + '{:.2f}'.format(info['Cd']) + "aF")
+    plt.annotate('LV: %s' % ['{:.1f}'.format(level) for level in info['levels']], (15, 20), xycoords='axes pixels', color='b')
+    plt.annotate('degen: %s' % info['degens'], (15, 5), xycoords='axes pixels', color='b')
     if mesure == 'I':
         plt_current(data, Vg, Vds, title, multi_plt=multi_plt)
     elif mesure == 'G':
@@ -114,7 +96,7 @@ def build_simulation(Cd, Cs, Cg, levels, degens, Gd=1.0, Gs=1.0):
     returns new_set created'''
     new_set = set.SET()
 
-    new_set.add_quantum_dot('dot', list(levels), degens)
+    new_set.add_quantum_dot('dot', list(levels), list(degens))
 
     # Add components to the dot to form the structure
     new_set.add_lead('source')
@@ -157,22 +139,61 @@ def simulate(myset, Vg, Vd, T, mesure='I'):
     return data
 
 
-def randCapGenerator(C_dist, g_ratio, snd_ratio):
+def randCapGenerator(Ec_dist, g_ratio, snd_ratio):
     """ This function outputs random capacitances out of the
     distributions provided:
-    C_dist: probability distribution of the total capacitance (in aF)
+    Ec_dist: probability distribution of the charging energy (in meV)
     g_ratio: the Cg/C ratio probability distribution
     snd_ratio: the Cs/(Cs+Cd) ratio. if we assume the source
       and drain are equivalent, it would make sens to make
       this distribution symetrical around 0.5"""
-    Ctot = C_dist()
+    Ec = Ec_dist()  # meV
+    Ctot = cst.e/(Ec*1E-3) * 1E18  # aF
     Cg = Ctot*g_ratio()
     Cs = snd_ratio()*(Ctot-Cg)
     Cd = Ctot - Cg - Cs
-    return Cd, Cs, Cg
+    return Cd, Cs, Cg, Ec
 
 
-def generation_loop(n, dop_dist, T_dist, Vg_range, nVg, Vds_range, nVds, mesure='I'):
+def randLevelGenerator():
+    """ This function outputs random energy levels out of the
+    distributions provided and random level degenerancies:"""
+    # TODO add in level compacting at high energies
+    rand_level_numb = lambda: np.random.choice(5, 1, p=[0.21, 0.35, 0.27, 0.12, 0.05]) + 1  # arbitrairy probabilities (what seems good)
+    n_levels = int(rand_level_numb())
+    rand_level_spacing = lambda: beta.rvs(2.3, 2.0, loc=1.0, scale=35)/(n_levels - 1)  # meV
+    if n_levels == 1:
+        rand_level_degens = lambda: np.random.choice(5, 1,
+                                                     p=[0.03, 0.25, 0.37, 0.25, 0.1])  # arbitrairy probabilities
+    elif n_levels == 2:
+        rand_level_degens = lambda: np.random.choice(6, 1,
+                                                     p=[0.1, 0.2, 0.32, 0.2, 0.12, 0.06])  # arbitrairy probabilities
+    elif n_levels == 3:
+        rand_level_degens = lambda: np.random.choice(6, 1,
+                                                     p=[0.3, 0.22, 0.18, 0.14, 0.1, 0.06])  # arbitrairy probabilities
+    elif n_levels == 4:
+        rand_level_degens = lambda: np.random.choice(6, 1,
+                                                     p=[0.3, 0.22, 0.18, 0.14, 0.1, 0.06])  # arbitrairy probabilities
+    else:
+        rand_level_degens = lambda: np.random.choice(5, 1,
+                                                     p=[0.4, 0.3, 0.17, 0.1, 0.03])  # arbitrairy probabilities
+
+    levels = [0.0]
+    degens = [1]
+    for i in range(n_levels - 1):
+        levels.append(float(rand_level_spacing() + levels[-1]))
+        degens.append(1)
+
+    # add random degens
+    add_degens = int(rand_level_degens())
+    for i in range(add_degens):
+        degens[int(np.random.choice(n_levels))] += 1
+    print(levels)
+    print(degens)
+    return levels, degens
+
+
+def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, nVg, Vds_range, nVds, mesure='I'):
     global dopants
     try:
         f = open(FILEPATH + '_data_indexer.yaml', 'r')
@@ -184,16 +205,15 @@ def generation_loop(n, dop_dist, T_dist, Vg_range, nVg, Vds_range, nVds, mesure=
 
     for i in range(n):
         print("GENERATING SAMPLE # %s" % i)
-        dop_label = dop_dist()
-        dop = dopants[dop_label]
-        print("Dopant type: %s" % dop['type'])
-        Cd, Cs, Cg = dop['capGenerator']()
-        Cd, Cs, Cg = float(Cd), float(Cs), float(Cg)
+        Cd, Cs, Cg, Ec = randCapGenerator(Ec_dist, g_ratio, snd_ratio)
+        Cd, Cs, Cg, Ec = float(Cd), float(Cs), float(Cg), float(Ec)
+        print("Capacities: %s" % [Cd, Cs, Cg])
         T = float(T_dist())
-        ID = dop['type'] + '_' + str(time.time()).replace('.', 's')
+        ID = str(time.time()).replace('.', 's')
 
         # simulation
-        set1 = build_simulation(Cd, Cs, Cg, dop['levels'], dop['degen'])
+        levels, degens = randLevelGenerator()
+        set1 = build_simulation(Cd, Cs, Cg, levels, degens)
         Vg = np.linspace(Vg_range[0], Vg_range[1], nVg)
         Vd = np.linspace(Vds_range[0], Vds_range[1], nVds)
         diagram = simulate(set1, Vg, Vd, T, mesure=mesure)
@@ -201,12 +221,13 @@ def generation_loop(n, dop_dist, T_dist, Vg_range, nVg, Vds_range, nVds, mesure=
         # saving data
         print("saving...")
         temp = {'f': ID,
-                'label': dop_label,  # number
-                'type': dop['type'],  # string
+                'Ec': Ec,
                 'Cg': Cg,
                 'Cd': Cd,
                 'Cs': Cs,
                 'T': T,
+                'levels': levels,
+                'degens': degens,
                 'Vds_range': Vds_range,
                 'Vg_range': Vg_range,
                 'nVds': nVds,
@@ -223,34 +244,21 @@ def generation_loop(n, dop_dist, T_dist, Vg_range, nVg, Vds_range, nVds, mesure=
 def generateFunction(n, mesure='I'):
     global dopants
 
-    g_ratio = lambda: beta.rvs(1.2, 1.2, loc=0.40, scale=0.40)
-    snd_ratio = lambda: beta.rvs(2, 2, loc=0.15, scale=0.7)
-    C_dist = lambda: beta.rvs(2.2, 2.2, loc=3.5, scale=6)
-    # ----------->>> P impurity
-    dopants[0]['capGenerator'] = lambda: randCapGenerator(C_dist=C_dist,
-                                                          g_ratio=g_ratio,
-                                                          snd_ratio=snd_ratio)
-    # ----------->>> As impurity
-    dopants[1]['capGenerator'] = lambda: randCapGenerator(C_dist=C_dist,
-                                                          g_ratio=g_ratio,
-                                                          snd_ratio=snd_ratio)
-    # ----------->>> B impurity
-    dopants[2]['capGenerator'] = lambda: randCapGenerator(C_dist=C_dist,
-                                                          g_ratio=g_ratio,
-                                                          snd_ratio=snd_ratio)
+    g_ratio = lambda: beta.rvs(1.2, 1.6, loc=0.10, scale=0.70)  # aF
+    snd_ratio = lambda: beta.rvs(2, 2, loc=0.15, scale=0.7)  # aF
+    Ec_dist = lambda: beta.rvs(2, 1.7, loc=12, scale=55)  # meV
+    T_dist = lambda: beta.rvs(1.8, 2.1, loc=1.5, scale=20)  # K
 
-    dop_dist = lambda: np.random.randint(0, 2)
-    T_dist = lambda: beta.rvs(4, 4, loc=0, scale=6)
-    generation_loop(n, dop_dist, T_dist, [-10, 290], 100, [-70, 70], 100, mesure=mesure)
+    generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, [-10, 290], 100, [-70, 70], 100, mesure=mesure)
 
 
 # =========================== MAIN ===========================
 def main():
-    #pltBeta(2.2, 2.2, loc=3.5, scale=6)
-    num = 200
+    pltBeta(2, 2, loc=0.15, scale=0.7)
+    num = 5
     generateFunction(num, mesure='I')
-    # for i in range(num):
-    #     plt_file(-(i+1))
+    for i in range(num):
+        plt_file(-(i+1))
 
 
 if __name__ == '__main__':
