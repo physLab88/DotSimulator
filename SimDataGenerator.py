@@ -203,7 +203,7 @@ def randLevelGenerator():
     return levels, degens
 
 
-def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, nVg, Vds_range, nVds, mesure='I'):
+def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, Vg_step, Vds_range, Vds_step, mesure='I'):
     global dopants
     try:
         f = open(FILEPATH + '_data_indexer.yaml', 'r')
@@ -227,6 +227,8 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, nVg, Vds_r
         # simulation
         levels, degens = randLevelGenerator()
         set1 = build_simulation(Cd, Cs, Cg, levels, degens)
+        nVg = int((Vg_range[1] - Vg_range[0])//Vg_step) + 1
+        nVds = int((Vds_range[1] - Vg_range[0])//Vds_step) + 1
         Vg = np.linspace(Vg_range[0], Vg_range[1], nVg)
         Vd = np.linspace(Vds_range[0], Vds_range[1], nVds)
         diagram = simulate(set1, Vg, Vd, T, mesure=mesure)
@@ -275,13 +277,16 @@ def generateFunction(n, mesure='I'):
     Ec_dist = lambda: beta.rvs(1.2, 1.2, loc=15, scale=45)  # (2, 1.7, loc=12, scale=55)  # meV
     T_dist = lambda: beta.rvs(1.8, 2.1, loc=1.5, scale=20)  # K
 
-    generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, [-10, 290], 100, [-70, 70], 100, mesure=mesure)
+    Vg_step = 2  # mV
+    Vds_step = 1  # mV
+
+    generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, [-10, 290], Vg_step, [-70, 70], Vds_step, mesure=mesure)
 
 
 # =========================== MAIN ===========================
 def main():
     #pltBeta(1.2, 1.2, loc=0.40, scale=0.40)
-    num = 3
+    num = 5
     generateFunction(num, mesure='I')
     for i in range(num):
         plt_file(-(i+1))
