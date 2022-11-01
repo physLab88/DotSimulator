@@ -168,22 +168,28 @@ def randLevelGenerator():
     rand_level_spacing = lambda: beta.rvs(2.3, 2.0, loc=1.0, scale=35)/(n_levels - 1)  # meV
     if n_levels == 1:
         rand_level_degens = lambda: np.random.choice(5, 1,
-                                                     p=[0.03, 0.25, 0.37, 0.25, 0.1])  # arbitrairy probabilities
+                                                     p=[0.17, 0.21, 0.32, 0.21, 0.09])  # arbitrairy probabilities
     elif n_levels == 2:
-        rand_level_degens = lambda: np.random.choice(6, 1,
-                                                     p=[0.1, 0.2, 0.32, 0.2, 0.12, 0.06])  # arbitrairy probabilities
-    elif n_levels == 3:
-        rand_level_degens = lambda: np.random.choice(6, 1,
-                                                     p=[0.3, 0.22, 0.18, 0.14, 0.1, 0.06])  # arbitrairy probabilities
-    elif n_levels == 4:
-        rand_level_degens = lambda: np.random.choice(6, 1,
-                                                     p=[0.3, 0.22, 0.18, 0.14, 0.1, 0.06])  # arbitrairy probabilities
-    else:
         rand_level_degens = lambda: np.random.choice(5, 1,
-                                                     p=[0.4, 0.3, 0.17, 0.1, 0.03])  # arbitrairy probabilities
+                                                     p=[0.23, 0.36, 0.22, 0.13, 0.06])  # arbitrairy probabilities
+    elif n_levels == 3:
+        rand_level_degens = lambda: np.random.choice(5, 1,
+                                                     p=[0.33, 0.23, 0.19, 0.15, 0.1])  # arbitrairy probabilities
+    elif n_levels == 4:
+        rand_level_degens = lambda: np.random.choice(5, 1,
+                                                     p=[0.35, 0.24, 0.2, 0.15, 0.06])  # arbitrairy probabilities
+    else:
+        rand_level_degens = lambda: np.random.choice(4, 1,
+                                                     p=[0.48, 0.36, 0.12, 0.04])  # arbitrairy probabilities
 
+    # here, it is important to understand that the first level must always have at least a degen of 2
+    # because if not, the charging energy of the first diamond will not be Ec, but will be shifted by an
+    # amount equal to the level spacing. also, if we only have 1 level, their won't be anny diamond if the
+    # degen = 1. thus, this is why we initiate degens = [2] instead of [1]. this is justifiable because in
+    # reality, all levels are at least degenerated 2 times because of spin if there is no magnetic field
+    # (which is assumed here)
     levels = [0.0]
-    degens = [1]
+    degens = [2]
     for i in range(n_levels - 1):
         levels.append(float(rand_level_spacing() + levels[-1]))
         degens.append(1)
@@ -275,7 +281,7 @@ def generateFunction(n, mesure='I'):
 # =========================== MAIN ===========================
 def main():
     #pltBeta(1.2, 1.2, loc=0.40, scale=0.40)
-    num = 10
+    num = 3
     generateFunction(num, mesure='I')
     for i in range(num):
         plt_file(-(i+1))
