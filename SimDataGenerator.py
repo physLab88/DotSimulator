@@ -8,7 +8,7 @@ import time  # to generate filenames
 import warnings  # to supress linalg warnings
 import scipy.linalg as linalg
 import copy
-
+# TODO adjust the step size of the data!!
 
 # ====================== DECLARING CONSTANTS ======================
 FILEPATH = "Data/single_dot/train/"
@@ -147,6 +147,7 @@ def randCapGenerator(Ec_dist, g_ratio, snd_ratio):
     snd_ratio: the Cs/(Cs+Cd) ratio. if we assume the source
       and drain are equivalent, it would make sens to make
       this distribution symetrical around 0.5"""
+    # TODO back gate
     Ec = Ec_dist()  # meV
     Ctot = cst.e/(Ec*1E-3) * 1E18  # aF
     Cg = Ctot*g_ratio()
@@ -244,9 +245,9 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, nVg, Vds_r
 def generateFunction(n, mesure='I'):
     global dopants
 
-    g_ratio = lambda: beta.rvs(1.2, 1.6, loc=0.10, scale=0.70)  # aF
+    g_ratio = lambda: beta.rvs(1.2, 1.2, loc=0.40, scale=0.40)  # (1.2, 1.6, loc=0.10, scale=0.70)  # aF
     snd_ratio = lambda: beta.rvs(2, 2, loc=0.15, scale=0.7)  # aF
-    Ec_dist = lambda: beta.rvs(2, 1.7, loc=12, scale=55)  # meV
+    Ec_dist = lambda: beta.rvs(1.2, 1.2, loc=15, scale=45)  # (2, 1.7, loc=12, scale=55)  # meV
     T_dist = lambda: beta.rvs(1.8, 2.1, loc=1.5, scale=20)  # K
 
     generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, [-10, 290], 100, [-70, 70], 100, mesure=mesure)
@@ -254,8 +255,8 @@ def generateFunction(n, mesure='I'):
 
 # =========================== MAIN ===========================
 def main():
-    pltBeta(2, 2, loc=0.15, scale=0.7)
-    num = 5
+    #pltBeta(1.2, 1.2, loc=0.40, scale=0.40)
+    num = 100000
     generateFunction(num, mesure='I')
     for i in range(num):
         plt_file(-(i+1))

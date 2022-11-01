@@ -83,7 +83,7 @@ def set2():
 
 
 def set3(Vg_span, nb_Vg, Vds_span, nb_Vds, T=1.0):
-    myset.add_quantum_dot('dot', [0.0, 10.0, 15.0, 17.0, 18.0], [1, 1, 1, 1, 1])
+    myset.add_quantum_dot('dot', [0, 10], [2, 2])  #, 10.0, 15.0, 17.0, 18.0], [1, 1, 1, 1, 1])
 
     # Add components to the dot to form the structure
     myset.add_lead('source')
@@ -134,10 +134,16 @@ def main():
     #plt_mat(temp)
     #temp = set1()
     #plt_mat(temp)
-    Cg, Cd, Cs = (3.52, 0.86, 0.87)  # aF (aF = 1E-18 F)
+    Ec = 25  # meV
+    Ctot = cst.e/(Ec*1E-3) * 1E18  # aF
+    alpha = 0.9
+    slew = 0.8
+    Cg = Ctot*alpha
+    Cs = Ctot*(1-alpha)*slew
+    Cd = Ctot - Cg - Cs
     Gd, Gs = (1.0, 1.0)
-    temp = set3([-50.0, 200.0], 100, [-100.0, 100.0], 100, 1)
-    plt_mat(temp)
+    temp = set3([0.0, 100.0], 100, [-50.0, 50.0], 100, 1)
+    plt_mat(temp.T)
 
 
 
