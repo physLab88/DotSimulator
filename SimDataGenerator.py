@@ -11,7 +11,7 @@ import copy
 # TODO adjust the step size of the data!!
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/single_dot/train/"
+FILEPATH = "Data/sim2_0/train/"
 
 
 # ========================== VISUAL TOOLS =========================
@@ -72,14 +72,17 @@ def plt_file(fileIndex, multi_plt=False):
     mesure = info['mesure']
 
     title = ("Ec:" + '{:.2f}'.format(info['Ec']) + "meV  T:" + '{:.2f}'.format(info['T']) + r"K    $\alpha$:" +
-             '{:.2f}'.format(info['Cg']/(info['Cg'] + info['Cs'] + info['Cd'])) + "    Cs:" + '{:.2f}'.format(info['Cs']) +
-              "aF  Cd:" + '{:.2f}'.format(info['Cd']) + "aF")
+             '{:.2f}'.format(info['ag']) + "    s_ratio:" + '{:.2f}'.format(info['s_ratio']))
     plt.annotate('LV: %s' % ['{:.1f}'.format(level) for level in info['levels']], (15, 20), xycoords='axes pixels', color='b')
     plt.annotate('degen: %s' % info['degens'], (15, 5), xycoords='axes pixels', color='b')
     if mesure == 'I':
         plt_current(data, Vg, Vds, title, multi_plt=multi_plt)
     elif mesure == 'G':
         plt_conduct(data, Vg, Vds, title, multi_plt=multi_plt)
+    box = info['box']
+    Vg = np.linspace(Vg[0], Vg[1], info["nVg"])
+    Vds = np.linspace(Vds[0], Vds[1], info["nVds"])
+    plt.gca().add_patch(plt.Rectangle([Vg[box[0][0]], Vds[box[1][1]]], Vg[box[1][0]] - Vg[box[0][0]], Vds[box[0][1]] - Vds[box[1][1]], fc='none', ec="b"))
     if not multi_plt:
         plt.show()
     return
@@ -208,9 +211,12 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, nVg, Vds_r
         print("GENERATING SAMPLE # %s" % i)
         Cd, Cs, Cg, Ec = randCapGenerator(Ec_dist, g_ratio, snd_ratio)
         Cd, Cs, Cg, Ec = float(Cd), float(Cs), float(Cg), float(Ec)
-        print("Capacities: %s" % [Cd, Cs, Cg])
+        Ctot = Cg + Cs + Cd  # aF
+        ag = Cg/Ctot  # calculating alpha (the lever arm)
+        s_ratio = Cs/(Ctot - Cg)
         T = float(T_dist())
         ID = str(time.time()).replace('.', 's')
+        print("Propreties: \t Ec %smeV\t ag %s\t s_ratio %s" % (Ec, ag, s_ratio))
 
         # simulation
         levels, degens = randLevelGenerator()
@@ -219,13 +225,25 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, nVg, Vds_r
         Vd = np.linspace(Vds_range[0], Vds_range[1], nVds)
         diagram = simulate(set1, Vg, Vd, T, mesure=mesure)
 
+        # calculating smalest box that frames the first diamond
+        # this box is a 2*2 array [UperLeft corner, LowerRight corner] in indicies coordinates
+        height = Ec  # mV
+        width = Ec/ag  # mV
+        start = width/2  # mV
+        left = int(np.argmin(np.abs(Vg - start)))
+        right = int(np.argmin(np.abs(Vg - (start + width))))
+        up = int(np.argmin(np.abs(Vd - height)))
+        down = int(np.argmin(np.abs(Vd - (-height))))
+        box = [[right, up], [left, down]]
+
         # saving data
         print("saving...")
         temp = {'f': ID,
                 'Ec': Ec,
-                'Cg': Cg,
-                'Cd': Cd,
-                'Cs': Cs,
+                'ag': ag,
+                's_ratio': s_ratio,
+                'Ctot': Ctot,
+                'box': box,
                 'T': T,
                 'levels': levels,
                 'degens': degens,
@@ -235,6 +253,7 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, nVg, Vds_r
                 'nVg': nVg,
                 'mesure': mesure,
                 }
+        print(temp)
         data.append(temp)
         f = open(FILEPATH + '_data_indexer.yaml', 'w')
         np.save(FILEPATH + ID + '.npy', diagram)
@@ -256,7 +275,7 @@ def generateFunction(n, mesure='I'):
 # =========================== MAIN ===========================
 def main():
     #pltBeta(1.2, 1.2, loc=0.40, scale=0.40)
-    num = 100000
+    num = 10
     generateFunction(num, mesure='I')
     for i in range(num):
         plt_file(-(i+1))
