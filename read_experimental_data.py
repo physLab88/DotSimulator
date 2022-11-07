@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+directory = 'Data/exp_data_2'
 
 def to_grid(I, Vg, Vd):
     ''' This function rearanges the data in a matrix so it is easier to work with'''
@@ -9,10 +10,11 @@ def to_grid(I, Vg, Vd):
     nb_Vg = len(Vg)
     Vd = np.unique(Vd)
     nb_Vd = len(Vd)
-    I = I.reshape((nb_Vd, nb_Vg))
+    I = I.reshape((nb_Vg, nb_Vd))
     # inverse every odd lines
+
     i = np.indices(I.shape)
-    print(i[0, :, :] % 2 == 0)
+    # print(i[0, :, :] % 2 == 0)
     I[i[0, :, :] % 2 == 0] = np.flip(I, 1)[i[0, :, :] % 2 == 0]
     I = I.T
     #I = np.flip(I, 1)
@@ -58,14 +60,14 @@ def plot_exp_data(filepath, title=None, mesure='I', log=True):
 
 
 def plt_I_vs_G(log=True):
-    directory = 'Data/exp_data'
+
     for filename in os.listdir(directory):
         f = os.path.join(directory, filename)
         # checking if it is a file
         if os.path.isfile(f):
             fig, axs = plt.subplots(1, 2, sharex=True, sharey=True, figsize=[12, 5])
             plt.sca(axs[0])
-            plot_exp_data(f, 'experimental data', 'I', log)
+            plot_exp_data(f, f, 'I', log)
             plt.sca(axs[1])
             plot_exp_data(f, 'experimental data', 'G', log)
             plt.tight_layout()
@@ -74,7 +76,6 @@ def plt_I_vs_G(log=True):
 
 
 def plt_all(mesure='I', log=True):
-    directory = 'Data/exp_data'
     for filename in os.listdir(directory):
         f = os.path.join(directory, filename)
         # checking if it is a file

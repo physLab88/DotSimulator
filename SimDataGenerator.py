@@ -11,7 +11,7 @@ import copy
 # TODO adjust the step size of the data!!
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/sim2_0/train/"
+FILEPATH = "Data/sim2_0/valid/"
 
 
 # ========================== VISUAL TOOLS =========================
@@ -286,8 +286,8 @@ def generateFunction(n, mesure='I'):
 # =========================== MAIN ===========================
 def main():
     #pltBeta(1.2, 1.2, loc=0.40, scale=0.40)
-    num = 5
-    generateFunction(num, mesure='I')
+    num = 10
+    #generateFunction(num, mesure='I')
     for i in range(num):
         plt_file(-(i+1))
 
