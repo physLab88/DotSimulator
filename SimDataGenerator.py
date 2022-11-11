@@ -7,11 +7,12 @@ import yaml  # to save python objects
 import time  # to generate filenames
 import warnings  # to supress linalg warnings
 import scipy.linalg as linalg
+from math import ceil, floor
 import copy
 # TODO adjust the step size of the data!!
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/sim2_0/valid/"
+FILEPATH = "Data/sim3_0/train/"
 
 
 # ========================== VISUAL TOOLS =========================
@@ -227,16 +228,52 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, Vg_step, V
         # simulation
         levels, degens = randLevelGenerator()
         set1 = build_simulation(Cd, Cs, Cg, levels, degens)
-        nVg = int((Vg_range[1] - Vg_range[0])//Vg_step) + 1
-        nVds = int((Vds_range[1] - Vg_range[0])//Vds_step) + 1
+
+        # ----------------->>> calculating Vg and Vds range and resolution
+        # diamond dimentions
+        height = Ec  # mV
+        width = Ec / ag  # mV
+
+        # setting the diamond resolution
+        Vg_res = 1/beta.rvs(2.3, 1.5, 5.0, 60.0)
+        if Vg_res*height <= 0.5:  # if step size < 0.5mV, clamp it
+            Vg_res = 0.5/height
+        Vds_res = 1 / beta.rvs(2.3, 1.5, 5.0, 80.0)
+        if Vds_res*height <= 0.5:  # if step size < 0.5mV, clamp it
+            Vds_res = 0.5/height
+
+        Vg_step = Vg_res*height
+        Vds_step = Vds_res*height
+        temp = Ec*2
+        if temp < 50.0:
+            temp = 40.0
+        if temp > 80:
+            temp = 80
+        temp = ceil(temp/Vds_step)*Vds_step
+        Vds_range = [float(-temp), float(temp)]
+
+        temp = width*(4 + 1/2)
+        if temp > 200.0:
+            temp = 200.0
+        if temp < 60:
+            temp = 60
+        if temp/Vg_step > 200:
+            temp = 200.0*Vg_step
+            if temp < 2*width:
+                temp = 2.0*width
+        temp = ceil(temp / Vds_step) * Vds_step
+        Vg_range = [0, float(temp)]
+
+        nVg = int((Vg_range[1] - Vg_range[0]) // Vg_step) + 1
+        nVds = int((Vds_range[1] - Vg_range[0]) // Vds_step) + 1
         Vg = np.linspace(Vg_range[0], Vg_range[1], nVg)
         Vd = np.linspace(Vds_range[0], Vds_range[1], nVds)
+
+        # ------------------->>> simulating
         diagram = simulate(set1, Vg, Vd, T, mesure=mesure)
 
         # calculating smalest box that frames the first diamond
         # this box is a 2*2 array [UperLeft corner, LowerRight corner] in indicies coordinates
-        height = Ec  # mV
-        width = Ec/ag  # mV
         start = width/2  # mV
         left = int(np.argmin(np.abs(Vg - start)))
         right = int(np.argmin(np.abs(Vg - (start + width))))
@@ -285,9 +322,9 @@ def generateFunction(n, mesure='I'):
 
 # =========================== MAIN ===========================
 def main():
-    #pltBeta(1.2, 1.2, loc=0.40, scale=0.40)
-    num = 10
-    #generateFunction(num, mesure='I')
+    pltBeta(2.3, 1.5, 5.0, 60.0)
+    num = 10000
+    generateFunction(num, mesure='I')
     for i in range(num):
         plt_file(-(i+1))
 

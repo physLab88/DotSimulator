@@ -2,8 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import os
+import yaml  # to save python objects
 
 directory = 'Data/exp_data_2'
+
 
 def to_grid(I, Vg, Vd):
     ''' This function rearanges the data in a matrix so it is easier to work with'''
@@ -38,6 +40,8 @@ def plot_exp_data(filepath, title=None, mesure='I', log=True):
     plt.title(title)
 
     I, Vg, Vd = load_exp(filepath)
+    Vg *= 1E3
+    Vd *= 1E3
     print(I.shape)
     if mesure == 'I':
         plt.title(title)
@@ -114,7 +118,7 @@ def plt_I_analytics(filepath, n_curves, log=False):
 def plt_I_analytics2(filepath, n_curves, log=False):
     cmap = cm.get_cmap("brg")
     I, Vgs, Vds = load_exp(filepath)
-    I = np.abs(I)
+    # I = np.abs(I)
     if log:
         I = np.log(I)
     Imax = I.max()
@@ -126,7 +130,8 @@ def plt_I_analytics2(filepath, n_curves, log=False):
         vg = Vgs[i]
         plt.plot(Vds*1E3, I[:,i],'-', label="Vg = {:0.2f} mV".format(vg*1E3), lw=1, color=cmap(float(k)/float(n_curves-1)))
     if log == False:
-        plt.ylim([0, Imax/12])
+        #plt.ylim([0, Imax/12])
+        pass
     plt.xlabel("Vds in mV")
     plt.ylabel("I in A")
     # plt.legend()
@@ -147,6 +152,24 @@ def compare_analytics(filepath, log=False):
     plt.show()
 
 
+conv_directorry = "Data/exp_full_data/"
+files_to_convert = []
+values_of_files = [{'Ec':1,},]
+def convert_exp_data():
+    try:
+        f = open(conv_directorry + '_data_indexer.yaml', 'r')
+        data = yaml.load(f, Loader=yaml.FullLoader)
+    except IOError:
+        f = open(conv_directorry + '_data_indexer.yaml', 'w')  # creating a file if it does not exist
+        data = []
+
+    data.append(temp)
+    f = open(FILEPATH + '_data_indexer.yaml', 'w')
+    np.save(FILEPATH + ID + '.npy', diagram)
+    yaml.dump(data, f)
+    return
+
+
 # ========================== MAIN =============================
 def main():
     filepaths = [
@@ -165,12 +188,12 @@ def main():
         "Data/exp_data_2\ST28_Q05_West_PCF19A_DUT7_4K_diamants_20220914-174924multi.txt",
         "Data/exp_data_2\ST28_Q05_West_PCF20A_DUT2_4K_diamants_20220914-144200multi.txt",
     ]
-    # plt_I_vs_G(True)
+    plt_I_vs_G(True)
     # plt_all('G', True)
     for i in range(len(filepaths)):
         filepath = filepaths[i]
         print(i)
-        compare_analytics(filepath, True)
+        compare_analytics(filepath, False)
     return
 
 
