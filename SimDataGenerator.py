@@ -12,8 +12,8 @@ import copy
 # TODO adjust the step size of the data!!
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/sim3_0/train/"
-
+FILEPATH = "Data/sim3_0/valid/"
+EXP_FILEPATH = "Data/exp_w_labels/"
 
 # ========================== VISUAL TOOLS =========================
 def pltBeta(a, b, loc=0.0, scale=1.0):
@@ -37,7 +37,7 @@ def plt_current(I, Vg, Vd, title='no name', multi_plt=False):
     I: Vds current matrix (in ????????????????????)
     title: graph title"""
     plt.title(title)
-    plt.imshow(np.abs(I), extent=[Vg[0],Vg[-1],Vd[0],Vd[-1]], aspect='auto', cmap='hot')
+    plt.imshow(np.log10(np.abs(I)), extent=[Vg[0],Vg[-1],Vd[0],Vd[-1]], aspect='auto', cmap='hot')
     if not multi_plt:
         cbar = plt.colorbar(label='current in ??????')
         plt.xlabel(r'$V_g$ in mV')
@@ -84,6 +84,24 @@ def plt_file(fileIndex, multi_plt=False):
     Vg = np.linspace(Vg[0], Vg[1], info["nVg"])
     Vds = np.linspace(Vds[0], Vds[1], info["nVds"])
     plt.gca().add_patch(plt.Rectangle([Vg[box[0][0]], Vds[box[1][1]]], Vg[box[1][0]] - Vg[box[0][0]], Vds[box[0][1]] - Vds[box[1][1]], fc='none', ec="b"))
+    if not multi_plt:
+        plt.show()
+    return
+
+
+def plt_exp_file(fileIndex, multi_plt=False):
+    f = open(EXP_FILEPATH + '_data_indexer.yaml', 'r')
+    info = yaml.load(f, Loader=yaml.FullLoader)[fileIndex]
+    data = np.load(EXP_FILEPATH + info['f'] + ".npy")
+    Vg = info['Vg_range']
+    Vds = info['Vds_range']
+    mesure = info['mesure']
+
+    title = ("Ec:" + '{:.2f}'.format(info['Ec']))
+    if mesure == 'I':
+        plt_current(data, Vg, Vds, title, multi_plt=multi_plt)
+    elif mesure == 'G':
+        plt_conduct(data, Vg, Vds, title, multi_plt=multi_plt)
     if not multi_plt:
         plt.show()
     return
@@ -204,7 +222,7 @@ def randLevelGenerator():
     return levels, degens
 
 
-def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, Vg_step, Vds_range, Vds_step, mesure='I'):
+def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure='I'):
     global dopants
     try:
         f = open(FILEPATH + '_data_indexer.yaml', 'r')
@@ -249,18 +267,20 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, Vg_range, Vg_step, V
             temp = 40.0
         if temp > 80:
             temp = 80
+        # TODO add in a minimum number of steps
         temp = ceil(temp/Vds_step)*Vds_step
         Vds_range = [float(-temp), float(temp)]
 
         temp = width*(4 + 1/2)
-        if temp > 200.0:
+        if temp > 200.0:  # maximum volt width
             temp = 200.0
-        if temp < 60:
+        if temp < 60:  # minimum volt width
             temp = 60
-        if temp/Vg_step > 200:
+        if temp/Vg_step > 200:  # maximum number of steps
             temp = 200.0*Vg_step
             if temp < 2*width:
                 temp = 2.0*width
+        # TODO add in a minimum number of steps
         temp = ceil(temp / Vds_step) * Vds_step
         Vg_range = [0, float(temp)]
 
@@ -314,20 +334,17 @@ def generateFunction(n, mesure='I'):
     Ec_dist = lambda: beta.rvs(1.2, 1.2, loc=15, scale=45)  # (2, 1.7, loc=12, scale=55)  # meV
     T_dist = lambda: beta.rvs(1.8, 2.1, loc=1.5, scale=20)  # K
 
-    Vg_step = 2  # mV
-    Vds_step = 1  # mV
-
-    generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, [-10, 290], Vg_step, [-70, 70], Vds_step, mesure=mesure)
+    generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure=mesure)
 
 
 # =========================== MAIN ===========================
 def main():
-    pltBeta(2.3, 1.5, 5.0, 60.0)
-    num = 10000
+    # pltBeta(2.3, 1.5, 5.0, 60.0)
+    num = 100000
     generateFunction(num, mesure='I')
-    for i in range(num):
-        plt_file(-(i+1))
-
+    # for i in range(num):
+    #     plt_file(-(i+1))
+    #     # plt_exp_file(-(i+1))
 
 if __name__ == '__main__':
     main()

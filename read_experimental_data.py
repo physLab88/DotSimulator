@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import os
 import yaml  # to save python objects
+import scipy.constants as cst
 
 directory = 'Data/exp_data_2'
 
@@ -152,48 +153,70 @@ def compare_analytics(filepath, log=False):
     plt.show()
 
 
-conv_directorry = "Data/exp_full_data/"
-files_to_convert = []
-values_of_files = [{'Ec':1,},]
+conv_directory = "Data/exp_w_labels/"
+files_to_convert = ["ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-160541multi.txt",
+                    "ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-165134multi.txt",
+                    #"ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-174550multi.txt",
+                    "ST28_Q05_Center_PCF20A_DUT2_4K_diamants_20220622-153810.txt_20220622-153810multi.txt",
+                    "ST28_Q05_North_PCF19A_DUT8_4K_diamants_20221027-130719multi.txt",
+                    "ST28_Q05_North_PCF20A_DUT8_4K_diamants_20221026-160229multi_abs.txt",
+                    ]
+values_of_files = [{'Ec':cst.e/(8.2228*1E-18)*1E3,},
+                   {'Ec':cst.e/(8.2236*1E-18)*1E3,},
+                   {'Ec':cst.e/(5.2601*1E-18)*1E3,},
+                   {'Ec':cst.e/(2.257*1E-18)*1E3,},
+                   {'Ec':cst.e/(6.4581*1E-18)*1E3,},]
 def convert_exp_data():
     try:
-        f = open(conv_directorry + '_data_indexer.yaml', 'r')
+        f = open(conv_directory + '_data_indexer.yaml', 'r')
         data = yaml.load(f, Loader=yaml.FullLoader)
     except IOError:
-        f = open(conv_directorry + '_data_indexer.yaml', 'w')  # creating a file if it does not exist
+        f = open(conv_directory + '_data_indexer.yaml', 'w')  # creating a file if it does not exist
         data = []
 
-    data.append(temp)
-    f = open(FILEPATH + '_data_indexer.yaml', 'w')
-    np.save(FILEPATH + ID + '.npy', diagram)
+    for file, info in zip(files_to_convert, values_of_files):
+        diagram, Vg, Vds = load_exp(directory + '/' + file)
+        Vg *= 1E3
+        Vds *= 1E3
+        file = file[:file.find('.')]
+        info['f'] = file
+        info['Vds_range'] = [float(Vds[0]), float(Vds[-1])]
+        info['Vg_range'] = [float(Vg[0]), float(Vg[-1])]
+        info['nVds'] = len(Vds)
+        info['nVg'] = len(Vg)
+        info['mesure'] = 'I'
+        data.append(info)
+        np.save(conv_directory + file + '.npy', diagram)
+    f = open(conv_directory + '_data_indexer.yaml', 'w')
     yaml.dump(data, f)
     return
 
 
 # ========================== MAIN =============================
 def main():
-    filepaths = [
-        "Data/exp_data_2\ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-160541multi.txt",
-        #"Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT2_2K_diamants_20221013-162619multi.txt",
-        #"Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT2_2K_diamants_20221013-165319multi_abs.txt",
-        "Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT2_4K_diamants_20221013-130233multi.txt",
-        #"Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT4_4K_diamants_20221013-141659multi.txt",
-        #"Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT5_4K_diamants_20221013-144919multi.txt",
-        "Data/exp_data_2\ST28_Q05_North_PCF20A_DUT2_4K_diamants_20221026-134517multi.txt",
-        "Data/exp_data_2\ST28_Q05_North_PCF20A_DUT2_4K_diamants_20221026-134517multi_abs.txt",
-        "Data/exp_data_2\ST28_Q05_North_PCF20A_DUT3_4K_diamants_20221026-140959multi.txt",
-        "Data/exp_data_2\ST28_Q05_North_PCF20A_DUT7_4K_diamants_20221026-153023multi.txt",
-        "Data/exp_data_2\ST28_Q05_West_PCF19A_DUT5_4K_diamants_20220914-165449multi.txt",
-        "Data/exp_data_2\ST28_Q05_West_PCF19A_DUT6_4K_diamants_20220914-172504multi.txt",
-        "Data/exp_data_2\ST28_Q05_West_PCF19A_DUT7_4K_diamants_20220914-174924multi.txt",
-        "Data/exp_data_2\ST28_Q05_West_PCF20A_DUT2_4K_diamants_20220914-144200multi.txt",
-    ]
-    plt_I_vs_G(True)
-    # plt_all('G', True)
-    for i in range(len(filepaths)):
-        filepath = filepaths[i]
-        print(i)
-        compare_analytics(filepath, False)
+    # convert_exp_data()
+    # filepaths = [
+    #     "Data/exp_data_2\ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-160541multi.txt",
+    #     #"Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT2_2K_diamants_20221013-162619multi.txt",
+    #     #"Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT2_2K_diamants_20221013-165319multi_abs.txt",
+    #     "Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT2_4K_diamants_20221013-130233multi.txt",
+    #     #"Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT4_4K_diamants_20221013-141659multi.txt",
+    #     #"Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT5_4K_diamants_20221013-144919multi.txt",
+    #     "Data/exp_data_2\ST28_Q05_North_PCF20A_DUT2_4K_diamants_20221026-134517multi.txt",
+    #     "Data/exp_data_2\ST28_Q05_North_PCF20A_DUT2_4K_diamants_20221026-134517multi_abs.txt",
+    #     "Data/exp_data_2\ST28_Q05_North_PCF20A_DUT3_4K_diamants_20221026-140959multi.txt",
+    #     "Data/exp_data_2\ST28_Q05_North_PCF20A_DUT7_4K_diamants_20221026-153023multi.txt",
+    #     "Data/exp_data_2\ST28_Q05_West_PCF19A_DUT5_4K_diamants_20220914-165449multi.txt",
+    #     "Data/exp_data_2\ST28_Q05_West_PCF19A_DUT6_4K_diamants_20220914-172504multi.txt",
+    #     "Data/exp_data_2\ST28_Q05_West_PCF19A_DUT7_4K_diamants_20220914-174924multi.txt",
+    #     "Data/exp_data_2\ST28_Q05_West_PCF20A_DUT2_4K_diamants_20220914-144200multi.txt",
+    # ]
+    # plt_I_vs_G(True)
+    # # plt_all('G', True)
+    # for i in range(len(filepaths)):
+    #     filepath = filepaths[i]
+    #     print(i)
+    #     compare_analytics(filepath, False)
     return
 
 
