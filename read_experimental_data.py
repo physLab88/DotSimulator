@@ -25,22 +25,27 @@ def to_grid(I, Vg, Vd):
     return I, Vg, Vd
 
 
-def load_exp(filepath):
+def load_exp(filepath, claude=False):
     data = np.loadtxt(filepath)
-    Vg = data[:, 0]
-    Vd = data[:, 1]
-    I = data[:, 2]
+    if claude:
+        Vg = data[:, 0]
+        Vd = data[:, 2]
+        I = data[:, 4]
+    else:
+        Vg = data[:, 0]
+        Vd = data[:, 1]
+        I = data[:, 2]
 
     I, Vg, Vd = to_grid(I, Vg, Vd)  # re-arange the data so it is easier to work with
     return I, Vg, Vd
 
 
-def plot_exp_data(filepath, title=None, mesure='I', log=True):
+def plot_exp_data(filepath, title=None, mesure='I', log=True, claude=False):
     if title is None:
         title = filepath
     plt.title(title)
 
-    I, Vg, Vd = load_exp(filepath)
+    I, Vg, Vd = load_exp(filepath, claude=claude)
     Vg *= 1E3
     Vd *= 1E3
     print(I.shape)
@@ -194,6 +199,10 @@ def convert_exp_data():
 
 # ========================== MAIN =============================
 def main():
+    plot_exp_data("Data/exp_data/20220615-095619_Map_STR_VDSR.txt", claude=True)
+    plt.show()
+    plot_exp_data("Data/exp_data/20220615-134200_Map_STR_VDSR.txt", claude=True)
+    plt.show()
     # convert_exp_data()
     # filepaths = [
     #     "Data/exp_data_2\ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-160541multi.txt",
@@ -211,8 +220,8 @@ def main():
     #     "Data/exp_data_2\ST28_Q05_West_PCF19A_DUT7_4K_diamants_20220914-174924multi.txt",
     #     "Data/exp_data_2\ST28_Q05_West_PCF20A_DUT2_4K_diamants_20220914-144200multi.txt",
     # ]
-    # plt_I_vs_G(True)
-    # # plt_all('G', True)
+    plt_I_vs_G(True)
+    # plt_all('I', True)
     # for i in range(len(filepaths)):
     #     filepath = filepaths[i]
     #     print(i)

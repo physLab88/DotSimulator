@@ -12,8 +12,9 @@ import copy
 # TODO adjust the step size of the data!!
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/sim3_0/valid/"
+FILEPATH = "Data/sim3_0/train/"
 EXP_FILEPATH = "Data/exp_w_labels/"
+
 
 # ========================== VISUAL TOOLS =========================
 def pltBeta(a, b, loc=0.0, scale=1.0):
@@ -332,7 +333,7 @@ def generateFunction(n, mesure='I'):
     g_ratio = lambda: beta.rvs(1.2, 1.2, loc=0.40, scale=0.40)  # (1.2, 1.6, loc=0.10, scale=0.70)  # aF
     snd_ratio = lambda: beta.rvs(2, 2, loc=0.15, scale=0.7)  # aF
     Ec_dist = lambda: beta.rvs(1.2, 1.2, loc=15, scale=45)  # (2, 1.7, loc=12, scale=55)  # meV
-    T_dist = lambda: beta.rvs(1.8, 2.1, loc=1.5, scale=20)  # K
+    T_dist = lambda: beta.rvs(1.8, 2.1, loc=15, scale=50) #loc=1.5, scale=20)  # K
 
     generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure=mesure)
 
@@ -345,6 +346,7 @@ def main():
     # for i in range(num):
     #     plt_file(-(i+1))
     #     # plt_exp_file(-(i+1))
+
 
 if __name__ == '__main__':
     main()
