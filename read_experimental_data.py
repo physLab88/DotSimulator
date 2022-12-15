@@ -40,7 +40,7 @@ def load_exp(filepath, claude=False):
     return I, Vg, Vd
 
 
-def plot_exp_data(filepath, title=None, mesure='I', log=True, claude=False):
+def plot_exp_data(filepath, title=None, mesure='I', log=True, claude=False, clamp=10**-14):
     if title is None:
         title = filepath
     plt.title(title)
@@ -51,11 +51,13 @@ def plot_exp_data(filepath, title=None, mesure='I', log=True, claude=False):
     print(I.shape)
     if mesure == 'I':
         plt.title(title)
+        I = np.abs(I)
+        I[I<clamp] = clamp
         if log:
-            plt.imshow(np.log10(np.abs(I)), extent=[Vg[0], Vg[-1], Vd[0], Vd[-1]], aspect='auto', cmap='hot')
+            plt.imshow(np.log10(I), extent=[Vg[0], Vg[-1], Vd[0], Vd[-1]], aspect='auto', cmap='hot')
             cbar = plt.colorbar(label='log(|current|)')
         else:
-            plt.imshow(np.abs(I), extent=[Vg[0], Vg[-1], Vd[0], Vd[-1]], aspect='auto', cmap='hot')
+            plt.imshow(I, extent=[Vg[0], Vg[-1], Vd[0], Vd[-1]], aspect='auto', cmap='hot')
             cbar = plt.colorbar(label='current in ??????')
         plt.xlabel(r'$V_g$ in mV')
         plt.ylabel(r'$V_{ds}$ in mV')
@@ -158,7 +160,7 @@ def compare_analytics(filepath, log=False):
     plt.show()
 
 
-conv_directory = "Data/exp_w_labels/"
+conv_directory = "Data/exp_claude/"
 files_to_convert = ["ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-160541multi.txt",
                     "ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-165134multi.txt",
                     #"ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-174550multi.txt",
@@ -171,7 +173,14 @@ values_of_files = [{'Ec':cst.e/(8.2228*1E-18)*1E3,},
                    {'Ec':cst.e/(5.2601*1E-18)*1E3,},
                    {'Ec':cst.e/(2.257*1E-18)*1E3,},
                    {'Ec':cst.e/(6.4581*1E-18)*1E3,},]
-def convert_exp_data():
+files_to_convert2 = ["20220615-095619_Map_STR_VDSR.txt",
+                     "20220615-134200_Map_STR_VDSR.txt",
+                    ]
+values_of_files2 = [{'Ec': 1.6926,},  # mV
+                   {'Ec':3.11,},]
+
+
+def convert_exp_data(files, values, claude=False):
     try:
         f = open(conv_directory + '_data_indexer.yaml', 'r')
         data = yaml.load(f, Loader=yaml.FullLoader)
@@ -179,8 +188,8 @@ def convert_exp_data():
         f = open(conv_directory + '_data_indexer.yaml', 'w')  # creating a file if it does not exist
         data = []
 
-    for file, info in zip(files_to_convert, values_of_files):
-        diagram, Vg, Vds = load_exp(directory + '/' + file)
+    for file, info in zip(files, values):
+        diagram, Vg, Vds = load_exp(directory + '/' + file, claude=claude)
         Vg *= 1E3
         Vds *= 1E3
         file = file[:file.find('.')]
@@ -199,11 +208,11 @@ def convert_exp_data():
 
 # ========================== MAIN =============================
 def main():
-    plot_exp_data("Data/exp_data/20220615-095619_Map_STR_VDSR.txt", claude=True)
-    plt.show()
-    plot_exp_data("Data/exp_data/20220615-134200_Map_STR_VDSR.txt", claude=True)
-    plt.show()
-    # convert_exp_data()
+    # plot_exp_data("Data/exp_data/20220615-095619_Map_STR_VDSR.txt", claude=True, clamp=10**-11)
+    # plt.show()
+    # plot_exp_data("Data/exp_data/20220615-134200_Map_STR_VDSR.txt", claude=True, clamp=10**-11)
+    # plt.show()
+    # convert_exp_data(files_to_convert2, values_of_files2, claude=True)
     # filepaths = [
     #     "Data/exp_data_2\ST28_Q05_Center_PCF19A_DUT11_4K_diamants_20220720-160541multi.txt",
     #     #"Data/exp_data_2\ST28_Q05_Est_PCF26A_DUT2_2K_diamants_20221013-162619multi.txt",
@@ -220,8 +229,8 @@ def main():
     #     "Data/exp_data_2\ST28_Q05_West_PCF19A_DUT7_4K_diamants_20220914-174924multi.txt",
     #     "Data/exp_data_2\ST28_Q05_West_PCF20A_DUT2_4K_diamants_20220914-144200multi.txt",
     # ]
-    plt_I_vs_G(True)
-    # plt_all('I', True)
+    # plt_I_vs_G(True)
+    plt_all('I', True)
     # for i in range(len(filepaths)):
     #     filepath = filepaths[i]
     #     print(i)

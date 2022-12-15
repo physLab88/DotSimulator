@@ -12,7 +12,7 @@ import copy
 # TODO adjust the step size of the data!!
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/sim3_0/train/"
+FILEPATH = "Data/sim_metalic/valid/"
 EXP_FILEPATH = "Data/exp_w_labels/"
 
 
@@ -67,7 +67,9 @@ def plt_conduct(G, Vg, Vd, title='no name', multi_plt=False):
 
 def plt_file(fileIndex, multi_plt=False):
     f = open(FILEPATH + '_data_indexer.yaml', 'r')
-    info = yaml.load(f, Loader=yaml.FullLoader)[fileIndex]
+    infos = yaml.load(f, Loader=yaml.FullLoader)
+    print(len(infos))
+    info = infos[fileIndex]
     data = np.load(FILEPATH + info['f'] + ".npy")
     Vg = info['Vg_range']
     Vds = info['Vds_range']
@@ -109,7 +111,7 @@ def plt_exp_file(fileIndex, multi_plt=False):
 
 
 # ========================= SUB FUNCTIONS =========================
-def build_simulation(Cd, Cs, Cg, levels, degens, Gd=1.0, Gs=1.0):
+def build_simulation(Cd, Cs, Cg, Gd=1.0, Gs=1.0):
     '''
     Cd, Cs, Cg : are (in order) drain, source and gate coupling capacitance with the dot (in aF)
     levels : are the energy levels of the dot (in meV)
@@ -119,7 +121,7 @@ def build_simulation(Cd, Cs, Cg, levels, degens, Gd=1.0, Gs=1.0):
     returns new_set created'''
     new_set = set.SET()
 
-    new_set.add_quantum_dot('dot', list(levels), list(degens))
+    new_set.add_metallic_dot('dot', 5, 0, 0)
 
     # Add components to the dot to form the structure
     new_set.add_lead('source')
@@ -179,50 +181,6 @@ def randCapGenerator(Ec_dist, g_ratio, snd_ratio):
     return Cd, Cs, Cg, Ec
 
 
-def randLevelGenerator():
-    """ This function outputs random energy levels out of the
-    distributions provided and random level degenerancies:"""
-    # TODO add in level compacting at high energies
-    rand_level_numb = lambda: np.random.choice(5, 1, p=[0.21, 0.35, 0.27, 0.12, 0.05]) + 1  # arbitrairy probabilities (what seems good)
-    n_levels = int(rand_level_numb())
-    rand_level_spacing = lambda: beta.rvs(2.3, 2.0, loc=1.0, scale=35)/(n_levels - 1)  # meV
-    if n_levels == 1:
-        rand_level_degens = lambda: np.random.choice(5, 1,
-                                                     p=[0.17, 0.21, 0.32, 0.21, 0.09])  # arbitrairy probabilities
-    elif n_levels == 2:
-        rand_level_degens = lambda: np.random.choice(5, 1,
-                                                     p=[0.23, 0.36, 0.22, 0.13, 0.06])  # arbitrairy probabilities
-    elif n_levels == 3:
-        rand_level_degens = lambda: np.random.choice(5, 1,
-                                                     p=[0.33, 0.23, 0.19, 0.15, 0.1])  # arbitrairy probabilities
-    elif n_levels == 4:
-        rand_level_degens = lambda: np.random.choice(5, 1,
-                                                     p=[0.35, 0.24, 0.2, 0.15, 0.06])  # arbitrairy probabilities
-    else:
-        rand_level_degens = lambda: np.random.choice(4, 1,
-                                                     p=[0.48, 0.36, 0.12, 0.04])  # arbitrairy probabilities
-
-    # here, it is important to understand that the first level must always have at least a degen of 2
-    # because if not, the charging energy of the first diamond will not be Ec, but will be shifted by an
-    # amount equal to the level spacing. also, if we only have 1 level, their won't be anny diamond if the
-    # degen = 1. thus, this is why we initiate degens = [2] instead of [1]. this is justifiable because in
-    # reality, all levels are at least degenerated 2 times because of spin if there is no magnetic field
-    # (which is assumed here)
-    levels = [0.0]
-    degens = [2]
-    for i in range(n_levels - 1):
-        levels.append(float(rand_level_spacing() + levels[-1]))
-        degens.append(1)
-
-    # add random degens
-    add_degens = int(rand_level_degens())
-    for i in range(add_degens):
-        degens[int(np.random.choice(n_levels))] += 1
-    print(levels)
-    print(degens)
-    return levels, degens
-
-
 def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure='I'):
     global dopants
     try:
@@ -245,8 +203,7 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure='I'):
         print("Propreties: \t Ec %smeV\t ag %s\t s_ratio %s" % (Ec, ag, s_ratio))
 
         # simulation
-        levels, degens = randLevelGenerator()
-        set1 = build_simulation(Cd, Cs, Cg, levels, degens)
+        set1 = build_simulation(Cd, Cs, Cg)
 
         # ----------------->>> calculating Vg and Vds range and resolution
         # diamond dimentions
@@ -311,8 +268,8 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure='I'):
                 'Ctot': Ctot,
                 'box': box,
                 'T': T,
-                'levels': levels,
-                'degens': degens,
+                'levels': [],
+                'degens': [],
                 'Vds_range': Vds_range,
                 'Vg_range': Vg_range,
                 'nVds': nVds,
@@ -333,18 +290,18 @@ def generateFunction(n, mesure='I'):
     g_ratio = lambda: beta.rvs(1.2, 1.2, loc=0.40, scale=0.40)  # (1.2, 1.6, loc=0.10, scale=0.70)  # aF
     snd_ratio = lambda: beta.rvs(2, 2, loc=0.15, scale=0.7)  # aF
     Ec_dist = lambda: beta.rvs(1.2, 1.2, loc=15, scale=45)  # (2, 1.7, loc=12, scale=55)  # meV
-    T_dist = lambda: beta.rvs(1.8, 2.1, loc=15, scale=50) #loc=1.5, scale=20)  # K
+    T_dist = lambda: beta.rvs(1.4, 1.8, loc=1, scale=64) #loc=1.5, scale=20)  # K
 
     generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure=mesure)
 
 
 # =========================== MAIN ===========================
 def main():
-    # pltBeta(2.3, 1.5, 5.0, 60.0)
-    num = 100000
-    # generateFunction(num, mesure='I')
-    for i in range(num):
-        plt_file(-(i+1))
+    # pltBeta(1.4, 1.8, loc=1, scale=64)
+    num = 1000000
+    generateFunction(num, mesure='I')
+    # for i in range(num):
+    #     plt_file(-(i+1))
     #     # plt_exp_file(-(i+1))
 
 
