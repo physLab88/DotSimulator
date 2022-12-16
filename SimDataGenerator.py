@@ -1,3 +1,8 @@
+""" Author: Michael Bedard
+
+This code was created to generate stability diagrams of random quantum dots.
+In addition, it has some visualising tools
+"""
 import set
 import numpy as np
 import matplotlib.pyplot as plt
@@ -9,17 +14,15 @@ import warnings  # to supress linalg warnings
 import scipy.linalg as linalg
 from math import ceil, floor
 import copy
-# TODO adjust the step size of the data!!
 
 # ====================== DECLARING CONSTANTS ======================
-FILEPATH = "Data/sim3_0/train/"
-EXP_FILEPATH = "Data/exp_w_labels/"
+FILEPATH = "Data/sim3_0/train/"         # filepath where to save simulated data files
+EXP_FILEPATH = "Data/exp_w_labels/"     # filepath from where to load experimental datafiles
 
 
 # ========================== VISUAL TOOLS =========================
 def pltBeta(a, b, loc=0.0, scale=1.0):
-    ''' this function allows you to visualise a distribution function
-    (not by using a statistical aproach)'''
+    ''' this function allows you to visualise the Beta probability distribution function'''
     x = np.linspace(loc + 0.001*scale, loc + 0.999*scale, 100)
     plt.title(r"Beta distribution $\alpha$=%s, $\beta$=%s, loc=%s, scale=%s" %
               ('{:.2f}'.format(a), '{:.2f}'.format(b), '{:.2f}'.format(loc), '{:.2f}'.format(scale)))
@@ -31,12 +34,14 @@ def pltBeta(a, b, loc=0.0, scale=1.0):
 
 def plt_current(I, Vg, Vd, title='no name', multi_plt=False):
     """
+    allows you to plot the current of a stability diagram
     Vg: array of Gate voltages, I use the first element as the min Vg value
         and the last as the max value. every other values are unused
     Vd: array of drain voltages, I use the first element as the min Vd value
         and the last as the max value. every other values are unused
     I: Vds current matrix (in ????????????????????)
-    title: graph title"""
+    title: graph title
+    multi_plt: True if you want to put this graph in a subplot, false if you want to visualise it as is"""
     plt.title(title)
     plt.imshow(np.log10(np.abs(I)), extent=[Vg[0],Vg[-1],Vd[0],Vd[-1]], aspect='auto', cmap='hot')
     if not multi_plt:
@@ -49,6 +54,7 @@ def plt_current(I, Vg, Vd, title='no name', multi_plt=False):
 
 def plt_conduct(G, Vg, Vd, title='no name', multi_plt=False):
     """
+    allows you to plot the conductance of a stability diagram
     Vg: array of Gate voltages, I use the first element as the min Vg value
         and the last as the max value. every other values are unused
     Vd: array of drain voltages, I use the first element as the min Vd value
@@ -66,13 +72,16 @@ def plt_conduct(G, Vg, Vd, title='no name', multi_plt=False):
 
 
 def plt_file(fileIndex, multi_plt=False):
+    """ Allows you to plot a file in a dataset at the index file_index"""
+    # load the info-dic and the data of the file
     f = open(FILEPATH + '_data_indexer.yaml', 'r')
     info = yaml.load(f, Loader=yaml.FullLoader)[fileIndex]
     data = np.load(FILEPATH + info['f'] + ".npy")
+
+
     Vg = info['Vg_range']
     Vds = info['Vds_range']
     mesure = info['mesure']
-
     title = ("Ec:" + '{:.2f}'.format(info['Ec']) + "meV  T:" + '{:.2f}'.format(info['T']) + r"K    $\alpha$:" +
              '{:.2f}'.format(info['ag']) + "    s_ratio:" + '{:.2f}'.format(info['s_ratio']))
     plt.annotate('LV: %s' % ['{:.1f}'.format(level) for level in info['levels']], (15, 20), xycoords='axes pixels', color='b')
@@ -91,6 +100,7 @@ def plt_file(fileIndex, multi_plt=False):
 
 
 def plt_exp_file(fileIndex, multi_plt=False):
+    """ allows to plot an experimental file that has been formated for use with neural networks"""
     f = open(EXP_FILEPATH + '_data_indexer.yaml', 'r')
     info = yaml.load(f, Loader=yaml.FullLoader)[fileIndex]
     data = np.load(EXP_FILEPATH + info['f'] + ".npy")
@@ -180,9 +190,7 @@ def randCapGenerator(Ec_dist, g_ratio, snd_ratio):
 
 
 def randLevelGenerator():
-    """ This function outputs random energy levels out of the
-    distributions provided and random level degenerancies:"""
-    # TODO add in level compacting at high energies
+    """ This function outputs random energy levels and random level degenerancies:"""
     rand_level_numb = lambda: np.random.choice(5, 1, p=[0.21, 0.35, 0.27, 0.12, 0.05]) + 1  # arbitrairy probabilities (what seems good)
     n_levels = int(rand_level_numb())
     rand_level_spacing = lambda: beta.rvs(2.3, 2.0, loc=1.0, scale=35)/(n_levels - 1)  # meV
@@ -224,6 +232,19 @@ def randLevelGenerator():
 
 
 def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure='I'):
+    """ This generation loop is the function that allows us to generate random
+    stability diagrams.
+    n: the number of sets to simulate
+    T_dist: the temperature probability distribution
+    Ec_dist: the Ec probability distribution
+    g_ratio: the Cg/C capacitance ratio (also known as alpha) probability distribution
+    snd_ratio: the Cs/(Cs + Cd) probability distribution
+    mesure: 'I' if you want to generate stability diagrams in current, 'G' if you wan't
+        them in conductance
+
+    IMPORTANT!!! while running this program, if you want to manually end the program,
+    make sure you do so while the code is not saving, as doing so can and will corrupt
+    your saved data"""
     global dopants
     try:
         f = open(FILEPATH + '_data_indexer.yaml', 'r')
@@ -235,6 +256,7 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure='I'):
 
     for i in range(n):
         print("GENERATING SAMPLE # %s" % i)
+        # ---> generating random parameter values
         Cd, Cs, Cg, Ec = randCapGenerator(Ec_dist, g_ratio, snd_ratio)
         Cd, Cs, Cg, Ec = float(Cd), float(Cs), float(Cg), float(Ec)
         Ctot = Cg + Cs + Cd  # aF
@@ -294,7 +316,7 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure='I'):
         diagram = simulate(set1, Vg, Vd, T, mesure=mesure)
 
         # calculating smalest box that frames the first diamond
-        # this box is a 2*2 array [UperLeft corner, LowerRight corner] in indicies coordinates
+        # this box is a 2*2 array [LowerRight corner, UperLeft corner] in indicies coordinates
         start = width/2  # mV
         left = int(np.argmin(np.abs(Vg - start)))
         right = int(np.argmin(np.abs(Vg - (start + width))))
@@ -304,6 +326,7 @@ def generation_loop(n, T_dist, Ec_dist, g_ratio, snd_ratio, mesure='I'):
 
         # saving data
         print("saving...")
+        # ---> creating the info dic
         temp = {'f': ID,
                 'Ec': Ec,
                 'ag': ag,
@@ -341,8 +364,8 @@ def generateFunction(n, mesure='I'):
 # =========================== MAIN ===========================
 def main():
     # pltBeta(2.3, 1.5, 5.0, 60.0)
-    num = 100000
-    # generateFunction(num, mesure='I')
+    num = 5
+    generateFunction(num, mesure='I')
     for i in range(num):
         plt_file(-(i+1))
     #     # plt_exp_file(-(i+1))
